@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+requests
+beautifulsoup4
+minio
+pymongo
+pandas
+htmx
+matplotlib
+plotly
