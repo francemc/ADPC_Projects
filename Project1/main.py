@@ -19,6 +19,22 @@ MINIO_SECRET_KEY = "admin123"
 BUCKET_NAME = "packages"
 
 # Establishing a connection to the PostgreSQL database
+def ask_for_db_connection():
+    print("Do you want to provide custom database connection details or use the default ones?")
+    choice = input("Enter 'custom' to provide custom connection details or press Enter to use the default: ").strip().lower()
+    
+    if choice == 'custom':
+        db_host = input("Enter database host (e.g., localhost): ").strip()
+        db_port = input("Enter database port (e.g., 5432): ").strip()
+        db_name = input("Enter database name: ").strip()
+        db_user = input("Enter database user: ").strip()
+        db_password = input("Enter database password: ").strip()
+        
+        return db_host, db_port, db_name, db_user, db_password
+    else:
+        # Use default database connection details (from your earlier example)
+        return 'royally-beautiful-conger.data-1.use1.tembo.io', '5432', 'postgres', 'postgres', 'Os2ZoGMqD0GIoVwD'
+
 def connect_to_db():
     try:
         conn = psycopg2.connect(
