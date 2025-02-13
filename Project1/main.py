@@ -150,7 +150,7 @@ def publish_package(directory):
 
 # Validate version format (x.y.z)
 def validate_version(version):
-    return bool(re.match(r'^\d+\.\d+\.\d+$', version))
+    return bool(requests.match(r'^\d+\.\d+\.\d+$', version))
 
 # Get repository ID by its name
 def get_repository_id(repo_name):
@@ -240,7 +240,7 @@ def get_installation_path():
         finally:
             cursor.close()
             conn.close()
-def install_package(package_name):
+def install(package_name):
     conn = connect_to_db()
     if conn:
         try:
