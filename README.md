@@ -1,4 +1,3 @@
 # ADPC_Projects
 
-WORK IN PROGRESS
 
