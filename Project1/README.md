@@ -1,22 +1,3 @@
-## Structure 
-
-Project1/
-│── alembic/
-│   │── __pycache__/
-│   │── versions/
-│   │── env.py
-│   │── README
-│── minio-data/
-│   │── .minio.sys/
-│   │── format.json
-│── packages/
-│── publish.json
-│── myapp/
-│   │── __pycache__/
-│   │── __init__.py
-│   │── main.py
-│   │── models.py
-
 This is a console-based package management system that interacts with a PostgreSQL database and MinIO object storage to store, retrieve, and manage software packages.
 
 ### Key Functionalities
