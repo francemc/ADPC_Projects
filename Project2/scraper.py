@@ -26,7 +26,7 @@ minio_client = Minio(
 )
 
 FILENAME = "TCGA_clinical_survival_data.tsv"
-OBJECT_NAME = FILENAME  # Puedes cambiarlo si quieres un nombre diferente en MinIO
+OBJECT_NAME = FILENAME 
 
 
 def ensure_bucket(bucket_name):
@@ -42,9 +42,9 @@ def upload_stream_to_minio(response, bucket_name, object_name):
         data = io.BytesIO(response.content)
         size = len(response.content)
         minio_client.put_object(bucket_name, object_name, data, length=size)
-        print(f"Sucessfully upload to MinIO: {bucket_name}/{object_name}")
+        print(f"☑️ Sucessfully upload to MinIO: {bucket_name}/{object_name}")
     except S3Error as e:
-        print(f" Error uploading to MinIO: {e}")
+        print(f" ⚠️ Error uploading to MinIO: {e}")
 
 def scrape_xena_and_download():
     url_base = "https://xenabrowser.net/datapages/"
@@ -75,7 +75,7 @@ def scrape_xena_and_download():
         cohort_name = cohort["name"]
         cohort_url = cohort["href"]
 
-        print(f" Entering: {cohort_name} - {cohort_url}")
+        print(f"⏳ Entering: {cohort_name} ")
         try:
             driver.get(cohort_url)
             time.sleep(3)
@@ -88,18 +88,17 @@ def scrape_xena_and_download():
                     illumina_link = a
             
             if not illumina_link:
-                print(f" There is not IlluminaHiSeq pancan normalized in {cohort_name}")
+                print(f" 🚫 There is not IlluminaHiSeq pancan normalized")
                 continue
 
             illumina_href = illumina_link.get_attribute("href")
             illumina_url = illumina_href if not illumina_href.startswith("?") else url_base + illumina_href
 
-            print(f"Accessing dataset: {illumina_url}")
             driver.get(illumina_url)
             time.sleep(3)
 
             wait = WebDriverWait(driver, 10) 
-            # Ahora buscar el <span> que contiene el link del .gz
+            # fin <span> with .gz 
             spans = wait.until(EC.presence_of_all_elements_located((By.CLASS_NAME, "Datapages-module__value___3k05o")))
             gz_url = None
             for span in spans:
@@ -114,23 +113,23 @@ def scrape_xena_and_download():
 
             if gz_url:
                 filename = f"{cohort_name.replace(' ', '_')}_{gz_url.split('/')[-1]}"
-                print(f"Downloading y uploading file: {filename}")
+                print(f"📥 Downloading file")
 
                 try:
                     response = requests.get(gz_url, stream=True)
                     if response.status_code == 200:
                         upload_stream_to_minio(response, BUCKET_NAME, filename)
                     else:
-                        print(f" Error HTTP: {response.status_code}")
+                        print(f"❌ Error HTTP: {response.status_code}")
                 except Exception as e:
-                    print(f" Error downloanding: {e}")
+                    print(f" ❌ Error downloanding: {e}")
 
             else:
-                print(f" file.gz doesnt existis in {cohort_name}")
+                print(f" 🚫 file.gz doesnt existis in {cohort_name}")
 
 
         except Exception as e:
-            print(f" Error charging cohort {cohort_name}: {e}")
+            print(f"⚠️ Error charging cohort {cohort_name}: {e}")
 
     driver.quit()
 
@@ -138,16 +137,16 @@ def upload_survival_file():
     ensure_bucket(BUCKET_NAME)
 
     if not os.path.exists(FILENAME):
-        print(f"❌ El archivo '{FILENAME}' no existe.")
+        print(f"❌ '{FILENAME}'  doesn´t exist.")
         return
 
     try:
         with open(FILENAME, "rb") as file_data:
             file_size = os.stat(FILENAME).st_size
             minio_client.put_object(BUCKET_NAME, OBJECT_NAME, file_data, file_size)
-            print(f"✅ Archivo '{FILENAME}' subido como '{OBJECT_NAME}' a MinIO.")
+            print(f"☑️  Sucessfully upload to MinIO:'{OBJECT_NAME}'.")
     except S3Error as e:
-        print(f"❌ Error al subir a MinIO: {e}")
+        print(f"❌ Error uploading to  MinIO: {e}")
 
 def main():
     scrape_xena_and_download()

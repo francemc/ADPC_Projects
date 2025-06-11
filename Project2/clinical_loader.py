@@ -20,10 +20,9 @@ def merge_data():
     # Optional: clean previous results
     merged_col.delete_many({})
 
-    
     total = 0
     matched = 0
-    missing = 0
+  
 
     # Load all gene expression docs
     for gene_doc in gene_col.find():
@@ -50,20 +49,18 @@ def merge_data():
             for field in ["DSS", "OS", "clinical_stage"]:
                 if field in surv_doc:
                     merged_doc[field] = surv_doc[field]
-            print(f"matched+")
+    
             merged_col.insert_one(merged_doc)
 
 
         else:
-            missing += 1
-            print(f"[WARN] No survival data for {patient_id} in cohort '{cohort}'")
+            print(f"🛑 No survival data for {patient_id} in cohort '{cohort}'")
 
 
-    print("✅ Merging complete. Check 'merged_patient_data' collection.")
+    print("🟢 Merging complete.")
     print(f"  Total patients:  {total}")
-    print(f"  Matched survival: {matched}")
-    print(f"  Missing survival: {missing}")
-    print("  -> Check collection: merged_patient_data")
+    print(f"  Merge with survival info : {matched}")
+
 
 if __name__ == "__main__":
     merge_data()

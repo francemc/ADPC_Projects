@@ -41,54 +41,48 @@ mongo_surv_col = mongo_client[MONGO["db"]][MONGO["survival_collection"]]
 def process():
     for obj in minio_client.list_objects(MINIO["bucket"], recursive=True):
         if obj.object_name.endswith(".gz"):
+            
 
             match = re.search(r'TCGA_(.*?)_\(', obj.object_name)
             cohort = match.group(1).replace("_", " ") if match else "Unknown"
-            print(f"Loading {cohort}...")
+            print(f" [GENE] Loading {cohort}...")
 
             response = minio_client.get_object(MINIO["bucket"], obj.object_name)
             with gzip.GzipFile(fileobj=io.BytesIO(response.read())) as gz:
                 df = pd.read_csv(gz, sep="\t", index_col=0)
 
             df = df[df.index.isin(GENES)].transpose()
-
-            docs = []
             for patient_id, row in df.iterrows():
-            
-                if mongo_gene_col.find_one({"patient_id": patient_id, "cancer_cohort": cohort}):
-                    continue  # already exists
-
-                docs.append({
+                doc = {
                     "patient_id": patient_id,
                     "cancer_cohort": cohort,
                     "gene_expression": row.dropna().to_dict()
-                })
+                }
+                mongo_gene_col.replace_one(
+                    {"patient_id": patient_id, "cancer_cohort": cohort},
+                    doc,
+                    upsert=True
+                )
 
-            if docs:
-                mongo_gene_col.insert_many(docs)
-                print(f" {len(docs)}  inserts.")
-
+         
         elif obj.object_name.endswith(".tsv"):
-            print(f"[SURVIVAL] Processing survival file - {obj.object_name}")
+            print(f"[SURVIVAL] Processing file - {obj.object_name}")
 
             response = minio_client.get_object(MINIO["bucket"], obj.object_name)
             df = pd.read_csv(io.BytesIO(response.read()), sep="\t")
 
-            # Renombrar si es necesario
-            if "_PATIENT" in df.columns:
-                df = df.rename(columns={"_PATIENT": "bcr_patient_barcode"})
 
-            # Normalizar valores numéricos
+            # Normalize int values
             for col in ["DSS", "OS"]:
                 if col in df.columns:
                     df[col] = df[col].fillna(0).astype(int)
 
-            # Validar columnas esenciales
+            # Validation of columns
             required_columns = ["bcr_patient_barcode", "DSS", "OS", "histological_type", "clinical_stage"]
             df = df[[col for col in required_columns if col in df.columns]]
             df = df.dropna(subset=["bcr_patient_barcode", "histological_type"], how="any")
 
-            # Agrupar por tipo de cáncer
+            # group by cancer type 
             grouped = df.groupby("histological_type")
 
             for cohort, group_df in grouped:
@@ -111,7 +105,7 @@ def process():
                     )
                     inserted += 1
 
-                print(f"  ✅ Inserted/Updated {inserted} survival docs for cohort {cohort}")
+                print(f"-> {inserted} survival docs for cohort {cohort}")
             else:
                     continue  
     
