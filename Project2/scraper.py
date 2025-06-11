@@ -8,6 +8,10 @@ from selenium.webdriver.common.by import By
 from webdriver_manager.chrome import ChromeDriverManager
 from minio import Minio
 from minio.error import S3Error
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+
+
 
 MINIO_ENDPOINT = "localhost:9000"
 MINIO_ACCESS_KEY = "minioadmin"
@@ -20,6 +24,10 @@ minio_client = Minio(
     secret_key=MINIO_SECRET_KEY,
     secure=False
 )
+
+FILENAME = "TCGA_clinical_survival_data.tsv"
+OBJECT_NAME = FILENAME  # Puedes cambiarlo si quieres un nombre diferente en MinIO
+
 
 def ensure_bucket(bucket_name):
     if not minio_client.bucket_exists(bucket_name):
@@ -61,7 +69,6 @@ def scrape_xena_and_download():
 
     print(f"{len(tcga_cohorts)} cohorts TCGA found.")
 
-
     ensure_bucket(BUCKET_NAME)
 
     for cohort in tcga_cohorts:
@@ -79,8 +86,7 @@ def scrape_xena_and_download():
             for a in all_links:
                 if "IlluminaHiSeq pancan normalized" in a.text:
                     illumina_link = a
-                    break
-
+            
             if not illumina_link:
                 print(f" There is not IlluminaHiSeq pancan normalized in {cohort_name}")
                 continue
@@ -92,9 +98,9 @@ def scrape_xena_and_download():
             driver.get(illumina_url)
             time.sleep(3)
 
-           
+            wait = WebDriverWait(driver, 10) 
             # Ahora buscar el <span> que contiene el link del .gz
-            spans = driver.find_elements(By.CLASS_NAME, "Datapages-module__value___3k05o")
+            spans = wait.until(EC.presence_of_all_elements_located((By.CLASS_NAME, "Datapages-module__value___3k05o")))
             gz_url = None
             for span in spans:
                 inner_links = span.find_elements(By.TAG_NAME, "a")
@@ -128,8 +134,24 @@ def scrape_xena_and_download():
 
     driver.quit()
 
+def upload_survival_file():
+    ensure_bucket(BUCKET_NAME)
+
+    if not os.path.exists(FILENAME):
+        print(f"❌ El archivo '{FILENAME}' no existe.")
+        return
+
+    try:
+        with open(FILENAME, "rb") as file_data:
+            file_size = os.stat(FILENAME).st_size
+            minio_client.put_object(BUCKET_NAME, OBJECT_NAME, file_data, file_size)
+            print(f"✅ Archivo '{FILENAME}' subido como '{OBJECT_NAME}' a MinIO.")
+    except S3Error as e:
+        print(f"❌ Error al subir a MinIO: {e}")
+
 def main():
     scrape_xena_and_download()
+    upload_survival_file()
 
 if __name__ == "__main__":
     main()
